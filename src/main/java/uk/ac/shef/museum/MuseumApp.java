@@ -4,24 +4,12 @@
  */
 package uk.ac.shef.museum;
 
-import com.primesense.nite.JointType;
-import com.primesense.nite.Point3D;
 import com.primesense.nite.Skeleton;
 import com.primesense.nite.SkeletonState;
 import com.primesense.nite.UserData;
 import com.primesense.nite.UserTracker;
-import java.io.PrintStream;
-import java.text.DecimalFormat;
 import java.util.List;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.sound.sampled.AudioInputStream;
-import javax.vecmath.Point3f;
-import javax.vecmath.Vector3f;
-import marytts.LocalMaryInterface;
-import marytts.MaryInterface;
-import marytts.util.data.audio.AudioPlayer;
+import java.util.Random;
 
 /**
  *
@@ -29,144 +17,139 @@ import marytts.util.data.audio.AudioPlayer;
  */
 class MuseumApp {
 
-    long startTime;
-    DecimalFormat df;
-    DecimalFormat posSpeak;
-    PrintStream out;
-    UserTracker mTracker;
-    PositionPanel posPanel;
-    int state = START;
-    final static int START = 0;
-    MaryInterface marytts;
-    long lastSpeak;
-    long lastUpdate;
-    Point3f centerPoint;
-
+    VisitorState state = VisitorState.START;
+    PlayState playState = PlayState.PLAY_START;
+    Action currentAction = Action.NONE;
+    Random rand;
+    MuseumUtils mu;
+    int score = 0;
+    boolean simonSays;
+ long lastRequest;
+   
     public MuseumApp(UserTracker tracker, PositionPanel panel) {
-        posPanel = panel;
-        mTracker = tracker;
-        lastUpdate = lastSpeak = startTime = System.currentTimeMillis();
-        df = new DecimalFormat("#.##");
-        centerPoint = new Point3f(300, 630, 2000);
-        try {
-            marytts = new LocalMaryInterface();
-            Set<String> voices = marytts.getAvailableVoices();
-            marytts.setVoice(voices.iterator().next());
-            out = new PrintStream("out-log.txt");
-            posSpeak = new DecimalFormat("#");
-        } catch (Exception ex) {
-            Logger.getLogger(UserViewer.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        mu = new MuseumUtils(tracker, panel);
+        rand = new Random();
     }
 
-    void speak(String text) {
-        try {
-            AudioInputStream audio = marytts.generateAudio(text);
-            AudioPlayer player = new AudioPlayer(audio);
-            player.start();
-            // player.join();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    Action chooseAction() {
+        /*      Class c = Action.class;
+         int x = rand.nextInt(c.getEnumConstants().length);
+         return (Action)c.getEnumConstants()[x];*/
+        return Action.WAVE;
     }
 
-    void addReport(UserData user) {
-        String report;
-        short id = user.getId();
-        float totalElapsed = (float) (System.currentTimeMillis() - startTime) / 1000;
-
-        report = "User " + id + " time " + df.format(totalElapsed);
-        if (user.isNew()) {
-            // start skeleton tracking
-            //mTracker.startSkeletonTracking(id);
-
-            report += " New";
-        } else {
-            report += " Existing";
+    boolean doesSimonSay() {
+        double r = rand.nextDouble();
+        if (r>0.5) {
+            return true;
         }
-        if (user.isLost()) {
-            //mTracker.stopSkeletonTracking(id);
-            report += " Lost";
-        }
-        if (user.isVisible()) {
-            report += " Visible";
-        } else {
-            //mTracker.stopSkeletonTracking(id);
-            report += " NotVisible";
-        }
-        out.println(report);
-
-
+        return false;
     }
 
     void update(List<UserData> users) {
         for (UserData user : users) {
             //addReport(user); 
-            if (state == START) {
-                boolean inZone = inPlayZone(user);
+            if (state == VisitorState.START) {
+                boolean inZone = mu.inPlayZone(user);
+                if (inZone) {
+                    state = VisitorState.GREET;
+                }
+            }
+            if (state == VisitorState.GREET) {
+                mu.speak("Hello human. Welcome to my game.");
+
+                state = VisitorState.WAIT_FOR_TRACK;
+            }
+            if (state == VisitorState.WAIT_FOR_TRACK) {
+                Skeleton skeleton = user.getSkeleton();
+                SkeletonState skelState = skeleton.getState();
+                if (skelState == SkeletonState.TRACKED) {
+                    state = VisitorState.START_GAME;
+                } else {
+                    if (mu.timeSinceLastSpeak() > 5000) {
+                        mu.speak("I can't see you yet. Please wave your arms at me.");
+                    }
+                }
 
             }
+            if (state == VisitorState.START_GAME) {
+                if (mu.timeSinceLastSpeak() > 5000) {
+                    mu.speak("Ok that's great I can see you. Let's start the game.");
+                    state = VisitorState.PLAYING_GAME;
+                }
+            }
+            if (state == VisitorState.PLAYING_GAME) {
+                if (playState == PlayState.PLAY_START) {
+                    if (mu.timeSinceLastSpeak() > 5000) {
+                        currentAction = chooseAction();
+                        simonSays = doesSimonSay();
+                        makeRequest();
+                        playState = PlayState.ACTION_GIVEN;
+
+                    }
+                }
+                if (playState == PlayState.ACTION_GIVEN) {
+                    mu.addSkeleton(user.getSkeleton());
+
+                    if (timeSinceRequest() > 7000) {
+                        playState = PlayState.EVALUATION;
+                    }
+                }
+                if (playState == PlayState.EVALUATION) {
+                    checkRequest();
+                    playState = PlayState.PLAY_START;
+                }
+            }
+            mu.makeLog(user);
         }
     }
 
-    boolean inPlayZone(UserData user) {
+    boolean checkRequest() {
         boolean ret = false;
-        if (user.isNew()) {
-            mTracker.startSkeletonTracking(user.getId());
-        } else {
-            short id = user.getId();
-            long now = System.currentTimeMillis();
-            float totalElapsed = (float) (now - startTime) / 1000;
-
-            Skeleton skeleton = user.getSkeleton();
-            SkeletonState skelState = skeleton.getState();
-            if (skelState == SkeletonState.TRACKED) {
-             com.primesense.nite.SkeletonJoint joint = skeleton.getJoint(JointType.HEAD);
-
-                    Point3D<Float> position = joint.getPosition();
-                    Point3f pos = convertPoint(position);
-                    Vector3f dist = new Vector3f();
-                    dist.x = pos.x-centerPoint.x;
-                    dist.y = pos.z-centerPoint.z;
-                    float x = position.getX();
-                    float y = position.getY();
-                    float z = position.getZ();
-               if (now -lastSpeak > 2000) {
-                   float d = dist.length();
-                   if (d<500) {
-                       speak("In");
-                   } else {
-                       speak("Out");
-                   }
-                   lastSpeak = now;
-               }
-
-                if (now - lastUpdate > 200) {
-                    //speak(" x "+ df.format(x/1000) + " y "+df.format(y/1000)+" z "+df.format(z/1000));
-                    //speak(" x "+ (int)Math.round(x/10) + " y "+(int)Math.round(y/10)+" z "+(int)Math.round(z/10));
-                    posPanel.setPosition(position);
-                    posPanel.setVar("dist from center", dist.length());
-                    out.println("User " + id + " time " + df.format(totalElapsed)
-                            + " x " + (int) Math.round(x / 10) + " y " + (int) Math.round(y / 10) + " z " + (int) Math.round(z / 10));
-                    lastUpdate = now;
+        String toSpeak = "";
+        if (simonSays) {
+            if (currentAction == Action.WAVE) {
+                ret = mu.hasUserWaved();
+                if (ret) {
+                    toSpeak = "Yes, you got that right!";
+                    ++score;
+                } else {
+                    toSpeak = "No you got that wrong " + currentAction.getError() + ".";
                 }
-
-            } else {
-                // not yet tracked
             }
 
+        } else {
+            if (currentAction == Action.WAVE) {
+                ret = !mu.hasUserWaved();
+                if (ret) {
+                    toSpeak = "Yes well done, I didn't say Simon says.";
+                    ++score;
+                } else {
+                    toSpeak = "No you got it wrong, I didn't say Simon says.";
+                }
+            }
         }
 
+        toSpeak += " Your score is " + score;
+        mu.speak(toSpeak);
         return ret;
 
     }
-    
-    public Point3f convertPoint(com.primesense.nite.Point3D<Float> p) {
-        Point3f point = new Point3f();
-        point.x = p.getX();
-        point.y = p.getY();
-        point.z = p.getZ();
-        return point;
+     void makeRequest() {
+        String toSpeak = "";
+        if (simonSays) {
+            toSpeak+="Simon says";
+        }
+        toSpeak+=" "+currentAction.getCommand();
+        mu.speak(toSpeak);
+        lastRequest = System.currentTimeMillis();
     }
+     
+      long timeSinceRequest() {
+        long now = System.currentTimeMillis();
+        return now - lastRequest;
     
+    }
+   
+   
 }
