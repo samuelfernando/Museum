@@ -27,7 +27,7 @@ public class RobotController {
     Robot.JointId neck_pitch;
     RemoteSpeechServiceClient mySpeaker;
     public RemoteAnimationPlayerClient myPlayer;
-    SpeechJob currentSpeechJob;
+    SpeechJob currentSpeechJob = null;
     
     public RobotController(String robotIP) {
       
@@ -70,12 +70,10 @@ public class RobotController {
         myGoalPositions.clear();
     }
     
-    long speak(String text) {
-        long time = 0;
+    void speak(String text) {
         currentSpeechJob = mySpeaker.speak(text);
         
-        return time;
-    }
+       }
     void setDefaultPositions() {
         myGoalPositions = myRobot.getDefaultPositions();
         myRobot.move(myGoalPositions, 1000);

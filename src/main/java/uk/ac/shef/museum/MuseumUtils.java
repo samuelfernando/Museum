@@ -114,7 +114,7 @@ public class MuseumUtils {
 
 
         } else {
-            System.out.println("Not tracking user");
+            //System.out.println("Not tracking user");
             // not yet tracked
         }
 
@@ -168,7 +168,17 @@ public class MuseumUtils {
 
     boolean speechFinished() {
         if (robotActive) {
-            return (robotController.currentSpeechJob.getStatus()==DefaultSpeechJob.COMPLETE);
+            boolean ret = false;        
+            if (robotController.currentSpeechJob==null) {
+                ret = true;
+            }
+            else {
+                ret = (robotController.currentSpeechJob.getStatus()==DefaultSpeechJob.COMPLETE);
+                if (ret) {
+                    robotController.currentSpeechJob = null;
+                }
+            }
+            return ret;
         } else {
             long now = System.currentTimeMillis();
             return (now > endOfSpeech);
