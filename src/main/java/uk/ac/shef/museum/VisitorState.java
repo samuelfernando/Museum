@@ -9,5 +9,5 @@ package uk.ac.shef.museum;
  * @author samf
  */
 public enum VisitorState {
-  START, GREET, WAIT_FOR_TRACK, START_GAME, PLAYING_GAME;
+  NOTHINGNESS, BODIES, TRACKING, INZONE_START_GAME, PLAYING_GAME, END_GAME, GOODBYE;
 }

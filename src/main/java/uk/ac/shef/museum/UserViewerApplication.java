@@ -22,7 +22,7 @@ public class UserViewerApplication {
     private JFrame mFrame;
     private UserViewer mViewer;
     private boolean mShouldRun = true;
-
+    
     public UserViewerApplication(UserTracker tracker) {
         mFrame = new JFrame("NiTE User Tracker Viewer");
         PositionPanel positionPanel = new PositionPanel();

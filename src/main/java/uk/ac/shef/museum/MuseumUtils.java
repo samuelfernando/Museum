@@ -12,16 +12,21 @@ import com.primesense.nite.UserData;
 import com.primesense.nite.UserTracker;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
 import marytts.LocalMaryInterface;
 import marytts.MaryInterface;
 import marytts.util.data.audio.AudioPlayer;
+import org.robokind.api.speech.utils.DefaultSpeechJob;
 
 /**
  *
@@ -40,13 +45,25 @@ public class MuseumUtils {
     UserTracker mTracker;
     PositionPanel posPanel;
     MaryInterface marytts;
+    long endOfSpeech;
+    boolean robotActive;
+    RobotController robotController;
+    
     public MuseumUtils(UserTracker tracker, PositionPanel panel) {
+       HashMap<String, String> configs = ReadConfig.readConfig();
+       robotActive = Boolean.parseBoolean(configs.get("robot-active"));
+       if (robotActive) {
+           robotController = new RobotController(configs.get("ip"));
+       }
+            
+        
         posPanel = panel;
         mTracker = tracker;
-        lastUpdate = lastSpeak = startTime = System.currentTimeMillis();
+        endOfSpeech = lastUpdate = lastSpeak = startTime = System.currentTimeMillis();
         df = new DecimalFormat("#.##");
         centerPoint = new Point3f(0, 630, 2000);
         logPos = new Stack<Skeleton>();
+
         try {
             marytts = new LocalMaryInterface();
             Set<String> voices = marytts.getAvailableVoices();
@@ -59,57 +76,89 @@ public class MuseumUtils {
 
     }
 
+    void stopTrackingAllOtherUsers(List<UserData> users, short id) {
+        for (UserData user : users) {
+            if (user.getId() != id) {
+                mTracker.stopSkeletonTracking(user.getId());
+            }
+        }
+    }
+
     boolean inPlayZone(UserData user) {
         boolean ret = false;
 
-        if (user.isNew()) {
-            mTracker.startSkeletonTracking(user.getId());
-        } else {
-            long now = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
 
-            Skeleton skeleton = user.getSkeleton();
-            SkeletonState skelState = skeleton.getState();
-            if (skelState == SkeletonState.TRACKED) {
-                com.primesense.nite.SkeletonJoint joint = skeleton.getJoint(JointType.HEAD);
+        Skeleton skeleton = user.getSkeleton();
+        SkeletonState skelState = skeleton.getState();
+        if (skelState == SkeletonState.TRACKED) {
+            //System.out.println("Tracking user");
+            com.primesense.nite.SkeletonJoint joint = skeleton.getJoint(JointType.HEAD);
 
-                Point3D<Float> position = joint.getPosition();
-                Point3f pos = convertPoint(position);
-                Vector3f dist = new Vector3f();
-                dist.x = pos.x - centerPoint.x;
-                dist.y = pos.z - centerPoint.z;
-                if (now - lastSpeak > 2000) {
-                    float d = dist.length();
-                    if (d < 500) {
-                        //speak("In");
-                        ret = true;
-                    } else {
-                        // speak("Out");
-                    }
-                    lastSpeak = now;
+            Point3D<Float> position = joint.getPosition();
+            Point3f pos = convertPoint(position);
+            Vector3f dist = new Vector3f();
+            dist.x = pos.x - centerPoint.x;
+            dist.y = pos.z - centerPoint.z;
+            //if (now - lastSpeak > 2000) {
+                float d = dist.length();
+                if (d < 500) {
+                    //speak("In");
+                    ret = true;
+                } else {
+              //      System.out.println("Outside zone");
+                    // speak("Out");
                 }
+                lastSpeak = now;
+            //}
 
 
-            } else {
-                // not yet tracked
-            }
-
+        } else {
+            System.out.println("Not tracking user");
+            // not yet tracked
         }
+
+
 
         return ret;
 
     }
 
     void speak(String text) {
+        if (robotActive) {
+            robotSpeak(text);
+        }
+        else {
+            localSpeak(text);
+        }
+    }
+    
+    void robotSpeak(String text) {
+        robotController.speak(text);
+    }
+    
+    void localSpeak(String text) {
         try {
+
             AudioInputStream audio = marytts.generateAudio(text);
+            AudioFormat format = audio.getFormat();
+            long audioFileLength = audio.getFrameLength();
+
+            //int frameSize = format.getFrameSize();
+            float frameRate = format.getFrameRate();
+            float durationInSeconds = (audioFileLength / frameRate);
+            long length = (long) (durationInSeconds * 1000);
             AudioPlayer player = new AudioPlayer(audio);
             player.start();
+
             // player.join();
+            System.out.println("length = " + length);
+            long now = System.currentTimeMillis();
+            lastSpeak = now;
+            endOfSpeech = now + length + 500;
         } catch (Exception e) {
             e.printStackTrace();
         }
-        lastSpeak = System.currentTimeMillis();
-
     }
 
     long timeSinceLastSpeak() {
@@ -117,10 +166,19 @@ public class MuseumUtils {
         return now - lastSpeak;
     }
 
+    boolean speechFinished() {
+        if (robotActive) {
+            return (robotController.currentSpeechJob.getStatus()==DefaultSpeechJob.COMPLETE);
+        } else {
+            long now = System.currentTimeMillis();
+            return (now > endOfSpeech);
+        }
+    }
+
     void addSkeleton(Skeleton skeleton) {
         logPos.push(skeleton);
     }
-    
+
     public Point3f convertPoint(com.primesense.nite.Point3D<Float> p) {
         Point3f point = new Point3f();
         point.x = p.getX();
@@ -185,8 +243,6 @@ public class MuseumUtils {
         //speak("Speed was " + speed);
         return (avgSpeed > 15);
     }
-
-    
 
     void addReport(UserData user) {
         String report;
