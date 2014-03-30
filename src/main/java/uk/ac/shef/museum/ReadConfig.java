@@ -22,6 +22,7 @@ public class ReadConfig {
             br = new BufferedReader(new FileReader("C:\\Users\\samf\\Documents\\NetBeansProjects\\zeno-config.txt"));
             String line;
             while ((line=br.readLine())!=null) {
+                System.out.println(line);
                 String[] split = line.split("\t");
                 configs.put(split[0], split[1]);
             }

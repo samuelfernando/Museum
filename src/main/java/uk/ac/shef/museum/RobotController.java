@@ -6,6 +6,7 @@ package uk.ac.shef.museum;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.robokind.api.animation.Animation;
 import org.robokind.api.animation.messaging.RemoteAnimationPlayerClient;
 import org.robokind.api.common.position.NormalizedDouble;
 import org.robokind.api.motion.Robot;
@@ -28,7 +29,7 @@ public class RobotController {
     RemoteSpeechServiceClient mySpeaker;
     public RemoteAnimationPlayerClient myPlayer;
     SpeechJob currentSpeechJob = null;
-    
+    Animation waveAnim;
     public RobotController(String robotIP) {
       
         String robotID = "myRobot";
@@ -41,7 +42,7 @@ public class RobotController {
         UserSettings.setSpeechAddress(robotIP);
         UserSettings.setAnimationAddress(robotIP);
 
-
+        waveAnim = Robokind.loadAnimation("wave-anim.xml");
         mySpeaker = Robokind.connectSpeechService();
         myPlayer = Robokind.connectAnimationPlayer();
         myRobot = Robokind.connectRobot();
@@ -73,7 +74,7 @@ public class RobotController {
     void speak(String text) {
         currentSpeechJob = mySpeaker.speak(text);
         
-       }
+   }
     void setDefaultPositions() {
         myGoalPositions = myRobot.getDefaultPositions();
         myRobot.move(myGoalPositions, 1000);
@@ -84,5 +85,13 @@ public class RobotController {
         }
         myGoalPositions.clear();
     
+    }
+
+    void speakWav(String text) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    void playWaveAnim() {
+        myPlayer.playAnimation(waveAnim);
     }
 }

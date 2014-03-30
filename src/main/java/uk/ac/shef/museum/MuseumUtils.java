@@ -10,6 +10,9 @@ import com.primesense.nite.Skeleton;
 import com.primesense.nite.SkeletonState;
 import com.primesense.nite.UserData;
 import com.primesense.nite.UserTracker;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
 import java.util.HashMap;
@@ -21,6 +24,7 @@ import java.util.logging.Logger;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
 import marytts.LocalMaryInterface;
@@ -48,6 +52,9 @@ public class MuseumUtils {
     long endOfSpeech;
     boolean robotActive;
     RobotController robotController;
+    boolean playWav;
+    HashMap<String, String> textMap;
+    boolean robotSpeechPendingComplete;
     
     public MuseumUtils(UserTracker tracker, PositionPanel panel) {
        HashMap<String, String> configs = ReadConfig.readConfig();
@@ -55,7 +62,23 @@ public class MuseumUtils {
        if (robotActive) {
            robotController = new RobotController(configs.get("ip"));
        }
-            
+       robotSpeechPendingComplete = false;
+       playWav = false;
+       String wavConf = configs.get("wav-tts");
+        if (wavConf.equals("wav")) {
+            playWav = true;
+        }
+        textMap = new HashMap<String, String>();
+        try {
+            BufferedReader r = new BufferedReader(new FileReader("textMap.txt"));
+            String line;
+            while ((line=r.readLine())!=null) {
+                String[] split = line.split("\t");
+                //textMap.put(split[0], split[1]);
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(MuseumUtils.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
         posPanel = panel;
         mTracker = tracker;
@@ -125,16 +148,59 @@ public class MuseumUtils {
     }
 
     void speak(String text) {
+        
+                
         if (robotActive) {
-            robotSpeak(text);
+            if (playWav) {
+                robotWav(text);
+            }
+            else {
+                robotSpeak(text);
+            }
         }
         else {
-            localSpeak(text);
+            if (playWav) {
+                localWav(text);
+            }
+            else {
+                localSpeak(text);
+            }
+        }
+    }
+    
+    void localWav(String text) {
+        try {
+            long now = System.currentTimeMillis();
+
+            File soundFile = new File( "AllAlone.wav" );
+            AudioInputStream audio = AudioSystem.getAudioInputStream( soundFile );
+            AudioFormat format = audio.getFormat();
+            long audioFileLength = audio.getFrameLength();
+
+            //int frameSize = format.getFrameSize();
+            float frameRate = format.getFrameRate();
+            float durationInSeconds = (audioFileLength / frameRate);
+            long length = (long) (durationInSeconds * 1000);
+           
+            Clip clip = AudioSystem.getClip();
+            clip.open(audio);
+            clip.start();
+            lastSpeak = now;
+            endOfSpeech = now + length + 500;
+   
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
     
     void robotSpeak(String text) {
+        if (text.toLowerCase().contains("wave your")) {
+            robotController.playWaveAnim();
+        }
         robotController.speak(text);
+    }
+    void robotWav(String text) {
+        robotController.speakWav(text);
     }
     
     void localSpeak(String text) {
@@ -167,20 +233,34 @@ public class MuseumUtils {
     }
 
     boolean speechFinished() {
+        long now = System.currentTimeMillis();
+
         if (robotActive) {
-            boolean ret = false;        
             if (robotController.currentSpeechJob==null) {
-                ret = true;
-            }
-            else {
-                ret = (robotController.currentSpeechJob.getStatus()==DefaultSpeechJob.COMPLETE);
-                if (ret) {
-                    robotController.currentSpeechJob = null;
+                if (robotSpeechPendingComplete) {
+                    if (now>endOfSpeech) {
+                        robotSpeechPendingComplete = false;
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return true;
                 }
             }
-            return ret;
+            else {
+                boolean ret = (robotController.currentSpeechJob.getStatus()==DefaultSpeechJob.COMPLETE);
+                if (ret) {
+                    this.robotSpeechPendingComplete = true;
+                    robotController.currentSpeechJob = null;
+                    endOfSpeech = now+500;
+                }
+                return false;
+                
+            }
         } else {
-            long now = System.currentTimeMillis();
             return (now > endOfSpeech);
         }
     }
@@ -282,4 +362,6 @@ public class MuseumUtils {
 
 
     }
+
+    
 }

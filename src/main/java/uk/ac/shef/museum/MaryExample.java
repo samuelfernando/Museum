@@ -8,9 +8,12 @@ package uk.ac.shef.museum;
  *
  * @author samf
  */
+import java.io.File;
 import java.util.Set;
 
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 import marytts.LocalMaryInterface;
 import marytts.MaryInterface;
@@ -22,9 +25,22 @@ public class MaryExample {
 	/**
 	 * @param args
 	 */
+    
+     static void localWav(String text) {
+        try {
+            File soundFile = new File( "AllAlone.wav" );
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream( soundFile );
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioInputStream);
+            clip.start();
+            Thread.sleep(5000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 	public static void main(String[] args) {
             try {
-		MaryInterface marytts = new LocalMaryInterface();
+		/*MaryInterface marytts = new LocalMaryInterface();
 		Set<String> voices = marytts.getAvailableVoices();
 		marytts.setVoice(voices.iterator().next());
                 
@@ -34,7 +50,8 @@ public class MaryExample {
                     player.start();
                     player.join();
                 }
-                System.exit(0);
+                System.exit(0);*/
+                localWav("");
             }
             catch (Exception e) {
                 e.printStackTrace();
