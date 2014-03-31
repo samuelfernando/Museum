@@ -44,16 +44,20 @@ public class WavDemo
             // Replace this bogus path with the actual one
             // A decent file for testing is /usr/share/sounds/alsa/Front_Left.wav
             //String wavPath = "/path/to/wav/on/robot.wav";
-            String wavPath = "/usr/share/sounds/alsa/Front_Left.wav";
+            String wavPath = "/home/fit/mySounds/attachment/eh-oh.wav";
             
             // Replace this with the IP address of the robot
             String ipAddress = "192.168.0.101";
             
-            WavPlayerConfigRecord config = configureStart(wavPath);
+            WavPlayerConfigRecord configStart = configureStart(wavPath);
+            WavPlayerConfigRecord configStop = configureStop(wavPath);
+            
             connect(ipAddress);
             JMSAvroRecordSender<WavPlayerConfigRecord> sender = makeSender();
-            sender.sendRecord(config);
-            Thread.sleep(5000);
+            sender.sendRecord(configStart);
+            Thread.sleep(500);
+            sender.sendRecord(configStop);
+            
             disconnect();
         } catch (InterruptedException ex) {
             Logger.getLogger(WavDemo.class.getName()).log(Level.SEVERE, null, ex);
