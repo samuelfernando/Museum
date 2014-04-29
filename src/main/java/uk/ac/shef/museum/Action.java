@@ -10,9 +10,9 @@ package uk.ac.shef.museum;
  */
 public enum Action {
     WAVE("Wave your hands", "you should have waved your hands"),
-    HANDS_BEHIND("Put your hands behind you", "you should have put your hands behind you"), 
-    HANDS_IN_AIR("Put your hands in the air", "you should have put your hands in the air"),
-    NONE("None", "None");
+    JUMP("Jump up and down", "you should have jumped"),
+    HANDS_UP("Put your hands up", "you should have put your hands up");
+    //NONE("None", "None");
     String command;
     String error;
     Action(String command, String error) {

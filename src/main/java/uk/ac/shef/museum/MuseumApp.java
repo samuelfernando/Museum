@@ -19,7 +19,7 @@ class MuseumApp {
 
     VisitorState state = VisitorState.NOTHINGNESS;
     PlayState playState = PlayState.PLAY_START;
-    Action currentAction = Action.NONE;
+    Action currentAction;
     Random rand;
     MuseumUtils mu;
     int score = 0;
@@ -38,15 +38,15 @@ class MuseumApp {
     }
 
     Action chooseAction() {
-        /*      Class c = Action.class;
+         Class c = Action.class;
          int x = rand.nextInt(c.getEnumConstants().length);
-         return (Action)c.getEnumConstants()[x];*/
-        return Action.WAVE;
+         return (Action)c.getEnumConstants()[x];
+        //return Action.HANDS_UP;
     }
 
     boolean doesSimonSay() {
         double r = rand.nextDouble();
-        if (r < 0.8) {
+        if (r < 0.5) {
             return true;
         }
         return false;
@@ -70,6 +70,7 @@ class MuseumApp {
                 for (UserData user : users) {
                     mu.mTracker.startSkeletonTracking(user.getId());
                 }
+                mu.stopSpeaking();
             } else if (mu.speechFinished()) {
                 mu.speak("I am all alone");
             }
@@ -78,21 +79,25 @@ class MuseumApp {
         if (state == VisitorState.BODIES) {
             if (users.isEmpty()) {
                 state = VisitorState.NOTHINGNESS;
+                mu.stopSpeaking();
             }
-            if (isAnyoneTracking(users)) {
-                state = VisitorState.TRACKING;
-            } else {
-                for (UserData user : users) {
-                    //if (user.isNew()) {
-                    if (user.getSkeleton().getState() == SkeletonState.NONE) {
-                        mu.mTracker.startSkeletonTracking(user.getId());
-                    }
+            else {
+                if (isAnyoneTracking(users)) {
+                    state = VisitorState.TRACKING;
+                    mu.stopSpeaking();
+                } else {
+                    for (UserData user : users) {
+                        //if (user.isNew()) {
+                        if (user.getSkeleton().getState() == SkeletonState.NONE) {
+                            mu.mTracker.startSkeletonTracking(user.getId());
+                        }
                    //}
-                }
+                    }
            
-                if (mu.speechFinished()) {
-                    mu.speak("I can see somebody, but not clearly yet."
+                    if (mu.speechFinished()) {
+                        mu.speak("I can see somebody, but not clearly yet."
                             + " You will need to stand still and wave your arms at me.");
+                    }
                 }
             }
         }
@@ -101,16 +106,18 @@ class MuseumApp {
            // System.out.println("Tracking state");
             if (!isAnyoneTracking(users)) {
                 state = VisitorState.BODIES;
+                mu.stopSpeaking();
             }
             else if (anyoneInZone(users)) {
                 state = VisitorState.INZONE_START_GAME;
+                mu.stopSpeaking();
             } 
             else if (mu.speechFinished()) {
                     for (UserData user : users) {
                     //if (user.isNew()) {
                         mu.mTracker.startSkeletonTracking(user.getId());
                    //}
-                }
+                    }
            
                 mu.speak("I can see you. But you have to get into the zone if you want to play.");
             }
@@ -121,6 +128,7 @@ class MuseumApp {
 
             if (!anyoneInZone(users)) {
                 state = VisitorState.TRACKING;
+                mu.stopSpeaking();
             }
             if (!greeted && mu.speechFinished()) {
                // System.out.println("Greeting");
@@ -132,12 +140,13 @@ class MuseumApp {
                         mu.mTracker.stopSkeletonTracking(user.getId());
                     }
                 }
+                while (!mu.speechFinished()) {}
                 greeted = true;
                 mu.makeLog(activeUser);
 
             }
 
-            if (greeted && mu.speechFinished()) {
+            if (greeted) {
                 state = VisitorState.PLAYING_GAME;
             }
         }
@@ -147,6 +156,7 @@ class MuseumApp {
         if (state == VisitorState.PLAYING_GAME) {
             activeUser = getActiveUser(users);
             if (activeUser == null) {
+                mu.stopSpeaking();
                 state = VisitorState.GOODBYE;
             } else {
                 if (playState == PlayState.PLAY_START) {
@@ -197,6 +207,9 @@ class MuseumApp {
                  state = VisitorState.NOTHINGNESS;
                 score = 0;
                 greeted = false;
+                do {
+                
+                } while (!mu.speechFinished());
                 //activeUser = null;
            }
         }
@@ -209,26 +222,24 @@ class MuseumApp {
         boolean ret = false;
         String toSpeak = "";
         if (simonSays) {
-            if (currentAction == Action.WAVE) {
-                ret = mu.hasUserWaved();
-                if (ret) {
-                    toSpeak = "Yes, you got that right!";
-                    ++score;
-                } else {
-                    toSpeak = "No you got that wrong " + currentAction.getError() + ".";
-                }
+            ret = mu.checkAction(currentAction);
+            if (ret) {
+               toSpeak = "Yes, you got that right!";
+               ++score;
+            } else {
+               toSpeak = "No you got that wrong " + currentAction.getError() + ".";
             }
 
         } else {
-            if (currentAction == Action.WAVE) {
-                ret = !mu.hasUserWaved();
-                if (ret) {
-                    toSpeak = "Yes well done, I did not say Simon says.";
-                    ++score;
-                } else {
-                    toSpeak = "No you got it wrong, I did not say Simon says.";
-                }
-            }
+            ret = !mu.checkAction(currentAction);
+           
+            if (ret) {
+               toSpeak = "Yes well done, I did not say Simon says.";
+               ++score;
+             } else {
+               toSpeak = "No you got it wrong, I did not say Simon says.";
+             }
+            
         }
 
         toSpeak += " Your score is " + score;

@@ -4,6 +4,7 @@
  */
 package uk.ac.shef.museum;
 
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.robokind.api.animation.Animation;
@@ -13,6 +14,7 @@ import org.robokind.api.motion.Robot;
 import org.robokind.api.motion.messaging.RemoteRobot;
 import org.robokind.api.speech.SpeechJob;
 import org.robokind.api.speech.messaging.RemoteSpeechServiceClient;
+import org.robokind.api.speech.utils.DefaultSpeechJob;
 import org.robokind.client.basic.Robokind;
 import org.robokind.client.basic.UserSettings;
 
@@ -28,7 +30,7 @@ public class RobotController {
     Robot.JointId neck_pitch;
     RemoteSpeechServiceClient mySpeaker;
     public RemoteAnimationPlayerClient myPlayer;
-    SpeechJob currentSpeechJob = null;
+    DefaultSpeechJob currentSpeechJob = null;
     Animation waveAnim;
     public RobotController(String robotIP) {
       
@@ -72,9 +74,19 @@ public class RobotController {
     }
     
     void speak(String text) {
-        currentSpeechJob = mySpeaker.speak(text);
+        currentSpeechJob = (DefaultSpeechJob)mySpeaker.speak(text);
         
    }
+    
+    void stopSpeaking() {
+        if (currentSpeechJob!=null) {
+          if (currentSpeechJob.getStatus()==DefaultSpeechJob.RUNNING) {
+             // currentSpeechJob.cancel();
+             // mySpeaker.stop();
+               currentSpeechJob = null;
+          }
+        }
+    }
     void setDefaultPositions() {
         myGoalPositions = myRobot.getDefaultPositions();
         myRobot.move(myGoalPositions, 1000);
@@ -94,4 +106,5 @@ public class RobotController {
     void playWaveAnim() {
         myPlayer.playAnimation(waveAnim);
     }
+    
 }

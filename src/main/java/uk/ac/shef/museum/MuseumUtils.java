@@ -55,6 +55,7 @@ public class MuseumUtils {
     boolean playWav;
     HashMap<String, String> textMap;
     boolean robotSpeechPendingComplete;
+    AudioPlayer audioPlayer;
     
     public MuseumUtils(UserTracker tracker, PositionPanel panel) {
        HashMap<String, String> configs = ReadConfig.readConfig();
@@ -147,9 +148,7 @@ public class MuseumUtils {
 
     }
 
-    void speak(String text) {
-        
-                
+    void speak(String text) {               
         if (robotActive) {
             if (playWav) {
                 robotWav(text);
@@ -214,8 +213,8 @@ public class MuseumUtils {
             float frameRate = format.getFrameRate();
             float durationInSeconds = (audioFileLength / frameRate);
             long length = (long) (durationInSeconds * 1000);
-            AudioPlayer player = new AudioPlayer(audio);
-            player.start();
+            audioPlayer = new AudioPlayer(audio);
+            audioPlayer.start();
 
             // player.join();
             System.out.println("length = " + length);
@@ -227,6 +226,15 @@ public class MuseumUtils {
         }
     }
 
+    void stopSpeaking() {
+        if (robotActive) {
+            robotController.stopSpeaking();
+        } else {
+            if (audioPlayer!=null && audioPlayer.isAlive()) {
+                audioPlayer.cancel();
+            }
+        }
+    }
     long timeSinceLastSpeak() {
         long now = System.currentTimeMillis();
         return now - lastSpeak;
@@ -261,7 +269,18 @@ public class MuseumUtils {
                 
             }
         } else {
-            return (now > endOfSpeech);
+            if (audioPlayer!=null) {
+                if (audioPlayer.isAlive()) {
+                    return (now > endOfSpeech);
+                }
+                else {
+                    return true;
+                }
+            }
+            else {
+                return true;
+            }
+            
         }
     }
 
@@ -302,6 +321,71 @@ public class MuseumUtils {
             lastUpdate = now;
         }
 
+    }
+
+    boolean checkAction(Action action) {
+        if (action == Action.WAVE) {
+            return hasUserWaved();
+        }
+        else if (action == Action.JUMP) {
+            return hasUserJumped();
+        }
+        else if (action == Action.HANDS_UP) {
+            return hasUserPutHandsUp();
+        }
+        return false;
+    }
+    
+    boolean hasUserJumped() {
+        float avgSpeed = 0.0f;
+        int count = 0;
+        Point3f oldhp = new Point3f();
+        while (!logPos.isEmpty()) {
+            Skeleton skel = logPos.pop();
+            com.primesense.nite.SkeletonJoint head = skel.getJoint(JointType.HEAD);
+            Point3f hp = convertPoint(head.getPosition());
+            
+            if (count > 0) {
+                Vector3f vel = new Vector3f();
+                vel.sub(hp, oldhp);
+                avgSpeed += vel.y*vel.y;
+            }
+            oldhp = hp;
+            ++count;
+        }
+        avgSpeed = avgSpeed / count;
+        int speed = (int) Math.round(avgSpeed * 10);
+        //speak("Speed was " + speed);
+        return (avgSpeed > 50);
+    }
+    boolean hasUserPutHandsUp() {
+        float avgYPos = 0.0f;
+        int count = 0;
+        
+        while (!logPos.isEmpty()) {
+            Skeleton skel = logPos.pop();
+            com.primesense.nite.SkeletonJoint leftHand = skel.getJoint(JointType.LEFT_HAND);
+            com.primesense.nite.SkeletonJoint rightHand = skel.getJoint(JointType.RIGHT_HAND);
+            com.primesense.nite.SkeletonJoint leftHip = skel.getJoint(JointType.LEFT_HIP);
+            com.primesense.nite.SkeletonJoint rightHip = skel.getJoint(JointType.RIGHT_HIP);
+ 
+            Point3f lhand = convertPoint(leftHand.getPosition());
+            Point3f rhand = convertPoint(rightHand.getPosition());
+            Point3f lhip = convertPoint(leftHip.getPosition());
+            Point3f rhip = convertPoint(rightHip.getPosition());
+            Vector3f lhdist = new Vector3f();
+            lhdist.sub(lhand, lhip);
+            Vector3f rhdist = new Vector3f();
+            rhdist.sub(rhand, rhip);
+            avgYPos += lhdist.y;
+            avgYPos += rhdist.y;
+            ++count;
+        }
+        avgYPos = avgYPos / count;
+        int yPos = (int) Math.round(avgYPos);
+        //speak("Position equals " + yPos);
+        return (avgYPos > 0);
+        //return false;
     }
 
     boolean hasUserWaved() {
