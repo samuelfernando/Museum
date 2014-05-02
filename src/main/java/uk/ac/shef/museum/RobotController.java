@@ -103,8 +103,9 @@ public class RobotController {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
-    void playWaveAnim() {
-        myPlayer.playAnimation(waveAnim);
+    void playAnim(String animName) {
+        Animation anim = Robokind.loadAnimation(animName+".xml");
+        myPlayer.playAnimation(anim);
     }
     
 }

@@ -57,7 +57,8 @@ public class MuseumUtils {
     boolean robotSpeechPendingComplete;
     AudioPlayer audioPlayer;
     
-    public MuseumUtils(UserTracker tracker, PositionPanel panel) {
+    
+    public MuseumUtils() {
        HashMap<String, String> configs = ReadConfig.readConfig();
        robotActive = Boolean.parseBoolean(configs.get("robot-active"));
        if (robotActive) {
@@ -81,11 +82,9 @@ public class MuseumUtils {
             Logger.getLogger(MuseumUtils.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        posPanel = panel;
-        mTracker = tracker;
         endOfSpeech = lastUpdate = lastSpeak = startTime = System.currentTimeMillis();
         df = new DecimalFormat("#.##");
-        centerPoint = new Point3f(0, 630, 2000);
+        centerPoint = new Point3f(0, 1320, 2000);
         logPos = new Stack<Skeleton>();
 
         try {
@@ -97,7 +96,13 @@ public class MuseumUtils {
         } catch (Exception ex) {
             Logger.getLogger(UserViewer.class.getName()).log(Level.SEVERE, null, ex);
         }
-
+    }
+    
+    public MuseumUtils(UserTracker tracker, PositionPanel panel) {
+        this();
+        posPanel = panel;
+        mTracker = tracker;
+    
     }
 
     void stopTrackingAllOtherUsers(List<UserData> users, short id) {
@@ -126,7 +131,7 @@ public class MuseumUtils {
             dist.y = pos.z - centerPoint.z;
             //if (now - lastSpeak > 2000) {
                 float d = dist.length();
-                if (d < 500) {
+                if (d < 850) {
                     //speak("In");
                     ret = true;
                 } else {
@@ -193,9 +198,7 @@ public class MuseumUtils {
     }
     
     void robotSpeak(String text) {
-        if (text.toLowerCase().contains("wave your")) {
-            robotController.playWaveAnim();
-        }
+        
         robotController.speak(text);
     }
     void robotWav(String text) {
@@ -226,6 +229,11 @@ public class MuseumUtils {
         }
     }
 
+    void makeRequest(String text, Action action) {
+        robotController.playAnim(action.getAnim());
+        robotController.speak(text);
+    
+    }
     void stopSpeaking() {
         if (robotActive) {
             robotController.stopSpeaking();
@@ -447,5 +455,14 @@ public class MuseumUtils {
 
     }
 
-    
+    public static void main(String args[]) {
+        MuseumUtils mu = new MuseumUtils();
+        //mu.robotSpeak("simon says wave your hands");
+       // mu.robotSpeak("simon says jump up and down");
+        // mu.robotSpeak("simon says put your hands up!");
+       // mu.robotSpeak("No you got that wrong.");
+      //   mu.robotSpeak("Yes you got that right!");
+        
+        System.exit(0);
+    }
 }
