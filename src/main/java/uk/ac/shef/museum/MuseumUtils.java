@@ -198,7 +198,12 @@ public class MuseumUtils {
     }
     
     void robotSpeak(String text) {
-        
+        if (text.toLowerCase().contains("wrong")) {
+            robotController.playAnim("disappointed");
+        }
+        else if (text.toLowerCase().contains("yes")) {
+            robotController.playAnim("victory");
+        }
         robotController.speak(text);
     }
     void robotWav(String text) {
