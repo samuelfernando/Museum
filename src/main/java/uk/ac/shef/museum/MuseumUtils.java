@@ -235,8 +235,13 @@ public class MuseumUtils {
     }
 
     void makeRequest(String text, Action action) {
-        robotController.playAnim(action.getAnim());
-        robotController.speak(text);
+        if (robotActive) {
+            robotController.playAnim(action.getAnim());
+            robotController.speak(text);
+        }
+        else {
+            localSpeak(text);
+        }
     
     }
     void stopSpeaking() {
@@ -291,7 +296,8 @@ public class MuseumUtils {
                 }
             }
             else {
-                return true;
+                return now>endOfSpeech;
+               // return true;
             }
             
         }

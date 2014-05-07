@@ -70,7 +70,7 @@ class MuseumApp {
                 for (UserData user : users) {
                     mu.mTracker.startSkeletonTracking(user.getId());
                 }
-                mu.stopSpeaking();
+             //   mu.stopSpeaking();
             } else if (mu.speechFinished()) {
                 //mu.speak("I am all alone");
             }
@@ -79,11 +79,11 @@ class MuseumApp {
         if (state == VisitorState.BODIES) {
             if (users.isEmpty()) {
                 state = VisitorState.NOTHINGNESS;
-                mu.stopSpeaking();
+               // mu.stopSpeaking();
             } else {
                 if (isAnyoneTracking(users)) {
                     state = VisitorState.TRACKING;
-                    mu.stopSpeaking();
+                 //   mu.stopSpeaking();
                 } else {
                     for (UserData user : users) {
                         //if (user.isNew()) {
@@ -104,10 +104,10 @@ class MuseumApp {
             // System.out.println("Tracking state");
             if (!isAnyoneTracking(users)) {
                 state = VisitorState.BODIES;
-                mu.stopSpeaking();
+               // mu.stopSpeaking();
             } else if (anyoneInZone(users)) {
                 state = VisitorState.INZONE_START_GAME;
-                mu.stopSpeaking();
+               // mu.stopSpeaking();
             } else if (mu.speechFinished()) {
                 for (UserData user : users) {
                     //if (user.isNew()) {
@@ -124,7 +124,7 @@ class MuseumApp {
 
             if (!anyoneInZone(users)) {
                 state = VisitorState.TRACKING;
-                mu.stopSpeaking();
+                //mu.stopSpeaking();
             }
             if (!greeted && mu.speechFinished()) {
                 // System.out.println("Greeting");
@@ -147,7 +147,12 @@ class MuseumApp {
             }
             activeUser = getActiveUser(users);
 
-            mu.makeLog(activeUser);
+            if (activeUser!=null) {
+                mu.makeLog(activeUser);
+            }
+            else {
+                state = VisitorState.GOODBYE;
+            }
 
         }
 
@@ -156,7 +161,7 @@ class MuseumApp {
         if (state == VisitorState.PLAYING_GAME) {
             activeUser = getActiveUser(users);
             if (activeUser == null) {
-                mu.stopSpeaking();
+               // mu.stopSpeaking();
                 state = VisitorState.GOODBYE;
             } else {
                 if (playState == PlayState.PLAY_START) {
