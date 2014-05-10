@@ -30,11 +30,15 @@ class MuseumApp {
     boolean greeted;
     long endOfRequest;
     boolean requestMade;
-
-    public MuseumApp(UserTracker tracker, PositionPanel panel) {
+    KinectVideoRecorder kinectVideoRecorder;
+    int userCount;
+    
+    public MuseumApp(UserTracker tracker, PositionPanel panel, KinectVideoRecorder recorder) {
         rand = new Random();
         mu = new MuseumUtils(tracker, panel);
         requestMade = false;
+        kinectVideoRecorder = recorder;
+        userCount = 0;
     }
 
     Action chooseAction() {
@@ -131,7 +135,9 @@ class MuseumApp {
 
                 mu.speak("Hello! Are you ready to play with me? Let's play Simon Says!"
                         + " If I say Simon Says you must do the action. Otherwise do not.");
+                ++userCount;
                 activeUser = getActiveUser(users);
+                kinectVideoRecorder.start("User"+activeUser.getId());
                 for (UserData user : users) {
                     if (user.getId() != activeUser.getId()) {
                         mu.mTracker.stopSkeletonTracking(user.getId());
@@ -208,6 +214,7 @@ class MuseumApp {
         if (state == VisitorState.GOODBYE) {
             if (mu.speechFinished()) {
                 mu.speak("Goodbye! I had fun playing with you. Your final score was " + score);
+                kinectVideoRecorder.stop();
                 playState = PlayState.PLAY_START;
                 state = VisitorState.NOTHINGNESS;
                 score = 0;
@@ -292,5 +299,10 @@ class MuseumApp {
             }
         }
         return chosenUser;
+    }
+
+    void stopRecording() {
+        kinectVideoRecorder.stop();
+        // throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

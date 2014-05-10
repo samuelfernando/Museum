@@ -13,13 +13,9 @@ import org.openni.OpenNI;
 import org.openni.*;
 import com.primesense.nite.*;
 import java.awt.GridLayout;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import uk.ac.shef.test.MySimpleViewerApplication;
 
 public class UserViewerApplication {
 
@@ -30,9 +26,9 @@ public class UserViewerApplication {
     public UserViewerApplication(Device device, UserTracker tracker) {
         mFrame = new JFrame("NiTE User Tracker Viewer");
         PositionPanel positionPanel = new PositionPanel();
-        mViewer = new UserViewer(tracker, positionPanel);
-          //     kinectVideoRecorder = new KinectVideoRecorder(device);
-
+        kinectVideoRecorder = new KinectVideoRecorder(device);
+        mViewer = new UserViewer(tracker, positionPanel, kinectVideoRecorder);
+        
         JPanel panel = new JPanel(new GridLayout(1,2));
         panel.add(mViewer);
         panel.add(positionPanel);
@@ -86,6 +82,7 @@ public class UserViewerApplication {
             }
         }
         //kinectVideoRecorder.stop();
+        mViewer.stopRecording();
         mFrame.dispose();
         System.exit(0);
     }
@@ -103,7 +100,6 @@ public class UserViewerApplication {
         
         Device device = Device.open(devicesInfo.get(0).getUri());
         UserTracker tracker = UserTracker.create();
-
         final UserViewerApplication app = new UserViewerApplication(device, tracker);
         app.run();
     }

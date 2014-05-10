@@ -7,6 +7,7 @@ package uk.ac.shef.museum;
 import com.primesense.nite.JointType;
 import com.primesense.nite.Point3D;
 import com.primesense.nite.Skeleton;
+import com.primesense.nite.SkeletonJoint;
 import com.primesense.nite.SkeletonState;
 import com.primesense.nite.UserData;
 import com.primesense.nite.UserTracker;
@@ -15,6 +16,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -56,7 +59,7 @@ public class MuseumUtils {
     HashMap<String, String> textMap;
     boolean robotSpeechPendingComplete;
     AudioPlayer audioPlayer;
-    
+    SimpleDateFormat dateFormat;
     
     public MuseumUtils() {
        HashMap<String, String> configs = ReadConfig.readConfig();
@@ -71,6 +74,7 @@ public class MuseumUtils {
             playWav = true;
         }
         textMap = new HashMap<String, String>();
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.SSS");
         try {
             BufferedReader r = new BufferedReader(new FileReader("textMap.txt"));
             String line;
@@ -86,12 +90,14 @@ public class MuseumUtils {
         df = new DecimalFormat("#.##");
         centerPoint = new Point3f(0, 1320, 2000);
         logPos = new Stack<Skeleton>();
-
+        long currentTime = System.currentTimeMillis();
         try {
             marytts = new LocalMaryInterface();
             Set<String> voices = marytts.getAvailableVoices();
             marytts.setVoice(voices.iterator().next());
-            out = new PrintStream("out-log.txt");
+            String timeNow = dateFormat.format(new Date(currentTime));
+            out = new PrintStream("out-"+timeNow+".txt");
+            
             posSpeak = new DecimalFormat("#");
         } catch (Exception ex) {
             Logger.getLogger(UserViewer.class.getName()).log(Level.SEVERE, null, ex);
@@ -335,9 +341,14 @@ public class MuseumUtils {
             //speak(" x "+ (int)Math.round(x/10) + " y "+(int)Math.round(y/10)+" z "+(int)Math.round(z/10));
             posPanel.setPosition(position);
             posPanel.setVar("dist from center", dist.length());
-            out.println("User " + user.getId() + " time " + df.format(totalElapsed)
-                    + " x " + (int) Math.round(x / 10) + " y " + (int) Math.round(y / 10) + " z " + (int) Math.round(z / 10));
+            //out.println("User " + user.getId() + " time " + df.format(totalElapsed)+ " x " + (int) Math.round(x / 10) + " y " + (int) Math.round(y / 10) + " z " + (int) Math.round(z / 10));
             lastUpdate = now;
+        }
+        Date date = new Date(now);
+        String timeNow = dateFormat.format(date);
+         
+        for (SkeletonJoint skelJoint : user.getSkeleton().getJoints()) {
+            out.println("User"+user.getId()+"\t"+timeNow+"\t"+skelJoint.getJointType()+"\t"+skelJoint.getPosition().getX()+"\t"+skelJoint.getPosition().getY()+"\t"+skelJoint.getPosition().getZ()+"\t"+skelJoint.getOrientation().getW()+"\t"+skelJoint.getOrientation().getX()+"\t"+skelJoint.getOrientation().getY()+"\t"+skelJoint.getOrientation().getZ()+"\t"+skelJoint.getPositionConfidence()+"\t"+skelJoint.getOrientationConfidence());//+"\t"+user.getSkeleton().getJoints());
         }
 
     }

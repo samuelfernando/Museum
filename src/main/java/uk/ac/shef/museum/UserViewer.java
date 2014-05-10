@@ -23,9 +23,9 @@ public class UserViewer extends Component
     int[] mColors;
     MuseumApp museumApp;
 
-    public UserViewer(UserTracker tracker, PositionPanel panel) {
+    public UserViewer(UserTracker tracker, PositionPanel panel, KinectVideoRecorder videoRecorder) {
         mTracker = tracker;
-        museumApp = new MuseumApp(mTracker, panel);
+        museumApp = new MuseumApp(mTracker, panel, videoRecorder);
 
         mTracker.addNewFrameListener(this);
         mColors = new int[]{0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFFFFFF00, 0xFFFF00FF, 0xFF00FFFF};
@@ -179,5 +179,10 @@ public class UserViewer extends Component
                 mHistogram[i] = (int) (256 * (1.0f - (mHistogram[i] / (float) points)));
             }
         }
+    }
+
+    void stopRecording() {
+        museumApp.stopRecording();
+        //    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

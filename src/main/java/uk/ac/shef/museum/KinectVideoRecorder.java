@@ -8,8 +8,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
 import org.openni.*;
 import java.util.List;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.monte.media.Format;
@@ -48,9 +50,11 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
     Format format;
     boolean paletteSet = false;
     boolean active = false;
+    SimpleDateFormat dateFormat;
     public KinectVideoRecorder(Device device) {
-        try {
             mDevice = device;
+                   dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.SSS");
+ 
             mSensorType = SensorType.COLOR;
             mVideoStream = VideoStream.create(mDevice, mSensorType);
             List<VideoMode> supportedModes = mVideoStream.getSensorInfo().getSupportedVideoModes();
@@ -63,18 +67,13 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
             }
             mVideoStream.setVideoMode(mVideoMode);
             mVideoStream.start();
-            active = true;
             mVideoStream.addNewFrameListener(this);
-                    format = new Format(EncodingKey, ENCODING_AVI_MJPG, DepthKey, 24, QualityKey, 1f);
-                format = format.prepend(MediaTypeKey, FormatKeys.MediaType.VIDEO, //
+            format = new Format(EncodingKey, ENCODING_AVI_MJPG, DepthKey, 24, QualityKey, 1f);
+            format = format.prepend(MediaTypeKey, FormatKeys.MediaType.VIDEO, //
                     FrameRateKey, new Rational(30, 1),//
                     WidthKey, 640, //
                     HeightKey, 480);
-                writer = new AVIWriter(new File("out.avi"));
-                writer.addTrack(format);
-        } catch (IOException ex) {
-            Logger.getLogger(KinectVideoRecorder.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        
           
 
     }
@@ -108,7 +107,22 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
             }
         }
     }
-    public void onFrameReady(VideoStream stream) {
+    
+    public synchronized void start(String filename) {
+        try {
+            active = true;
+            long now = System.currentTimeMillis();
+            Date date = new Date(now);
+            String timeNow = dateFormat.format(date);
+      
+            writer = new AVIWriter(new File(filename+"-"+timeNow+".avi"));
+            writer.addTrack(format);
+        } catch (IOException ex) {
+            Logger.getLogger(KinectVideoRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        }
+  
+    }
+    public synchronized void onFrameReady(VideoStream stream) {
         if (!active) {
             return;
         }
@@ -168,7 +182,7 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
 
             paletteSet = true;
         }
-
+        if (!active) return;
         try {
             writer.write(0, this.mBufferedImage, 1);
         }
@@ -177,10 +191,13 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
         }
 
     }
-    public void stop() {
+    public synchronized void stop() {
         try {
-            active = false;
-            writer.close();
+            if (active) {
+                active = false;
+                writer.finish();
+                writer.close();
+            }
         } catch (IOException ex) {
             Logger.getLogger(MySimpleViewerApplication.class.getName()).log(Level.SEVERE, null, ex);
         }
