@@ -51,6 +51,7 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
     boolean paletteSet = false;
     boolean active = false;
     SimpleDateFormat dateFormat;
+    long lastUpdate;
     public KinectVideoRecorder(Device device) {
             mDevice = device;
                    dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.SSS");
@@ -74,7 +75,7 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
                     WidthKey, 640, //
                     HeightKey, 480);
         
-          
+          lastUpdate = System.currentTimeMillis();
 
     }
 
@@ -126,6 +127,11 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
         if (!active) {
             return;
         }
+        long now = System.currentTimeMillis();
+        if (now - lastUpdate < 200) {
+            return;
+        }
+        lastUpdate = now;
         if (mLastFrame != null) {
             mLastFrame.release();
             mLastFrame = null;
@@ -184,7 +190,7 @@ public class KinectVideoRecorder implements VideoStream.NewFrameListener {
         }
         if (!active) return;
         try {
-            writer.write(0, this.mBufferedImage, 1);
+            writer.write(0, this.mBufferedImage, 10);
         }
         catch (Exception e) {
             e.printStackTrace();

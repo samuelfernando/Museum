@@ -4,6 +4,9 @@
  */
 package uk.ac.shef.museum;
 
+import java.io.PrintStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,10 +35,13 @@ public class RobotController {
     public RemoteAnimationPlayerClient myPlayer;
     DefaultSpeechJob currentSpeechJob = null;
     Animation waveAnim;
-    public RobotController(String robotIP) {
-      
+    PrintStream robotOut;
+    SimpleDateFormat dateFormat;
+    public RobotController(String robotIP, PrintStream robotOut) {
+        this.robotOut = robotOut;
         String robotID = "myRobot";
-
+    dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.SSS");
+       
         // set respective addresses
 
 
@@ -74,6 +80,11 @@ public class RobotController {
     }
     
     void speak(String text) {
+        long now = System.currentTimeMillis();
+        Date date = new Date(now);
+        String timeNow = dateFormat.format(date);
+        robotOut.println(timeNow+"\tspeak\t"+text);
+       
         currentSpeechJob = (DefaultSpeechJob)mySpeaker.speak(text);
         
    }
@@ -104,6 +115,11 @@ public class RobotController {
     }
 
     void playAnim(String animName) {
+        long now = System.currentTimeMillis();
+        Date date = new Date(now);
+        String timeNow = dateFormat.format(date);
+        robotOut.println(timeNow+"\tplayAnim\t"+animName);
+       
         Animation anim = Robokind.loadAnimation(animName+".xml");
         myPlayer.playAnimation(anim);
     }

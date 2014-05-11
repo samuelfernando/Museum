@@ -8,6 +8,7 @@ import com.primesense.nite.Skeleton;
 import com.primesense.nite.SkeletonState;
 import com.primesense.nite.UserData;
 import com.primesense.nite.UserTracker;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -32,12 +33,20 @@ class MuseumApp {
     boolean requestMade;
     KinectVideoRecorder kinectVideoRecorder;
     int userCount;
+    boolean kinectRecording;
     
     public MuseumApp(UserTracker tracker, PositionPanel panel, KinectVideoRecorder recorder) {
+
         rand = new Random();
         mu = new MuseumUtils(tracker, panel);
         requestMade = false;
-        kinectVideoRecorder = recorder;
+        if (recorder==null) {
+            kinectRecording = false;
+        }
+        else {
+            kinectRecording = true;
+            kinectVideoRecorder = recorder;
+        }
         userCount = 0;
     }
 
@@ -137,7 +146,9 @@ class MuseumApp {
                         + " If I say Simon Says you must do the action. Otherwise do not.");
                 ++userCount;
                 activeUser = getActiveUser(users);
-                kinectVideoRecorder.start("User"+activeUser.getId());
+                if (kinectRecording) {
+                    kinectVideoRecorder.start("User"+activeUser.getId());
+                }
                 for (UserData user : users) {
                     if (user.getId() != activeUser.getId()) {
                         mu.mTracker.stopSkeletonTracking(user.getId());
@@ -154,7 +165,7 @@ class MuseumApp {
             activeUser = getActiveUser(users);
 
             if (activeUser!=null) {
-                mu.makeLog(activeUser);
+                mu.makeLog(activeUser, state, playState);
             }
             else {
                 state = VisitorState.GOODBYE;
@@ -172,7 +183,7 @@ class MuseumApp {
             } else {
                 if (playState == PlayState.PLAY_START) {
                     // System.out.println("Play start");
-
+                    //mu.resetExpression();
                     if (mu.speechFinished()) {
                         currentAction = chooseAction();
                         simonSays = doesSimonSay();
@@ -204,7 +215,7 @@ class MuseumApp {
                         playState = PlayState.PLAY_START;
                     }
                 }
-                mu.makeLog(activeUser);
+                mu.makeLog(activeUser, state, playState);
             }
 
 
@@ -214,7 +225,10 @@ class MuseumApp {
         if (state == VisitorState.GOODBYE) {
             if (mu.speechFinished()) {
                 mu.speak("Goodbye! I had fun playing with you. Your final score was " + score);
-                kinectVideoRecorder.stop();
+                
+                if (kinectRecording) {
+                    kinectVideoRecorder.stop();
+                }
                 playState = PlayState.PLAY_START;
                 state = VisitorState.NOTHINGNESS;
                 score = 0;
@@ -233,13 +247,16 @@ class MuseumApp {
     boolean checkRequest() {
         boolean ret = false;
         String toSpeak = "";
+        Emotion emotion = null;
         if (simonSays) {
             ret = mu.checkAction(currentAction);
             if (ret) {
                 toSpeak = "Yes, you got that right!";
+                emotion = Emotion.Positive;
                 ++score;
             } else {
                 toSpeak = "No you got that wrong " + currentAction.getError() + ".";
+                emotion = Emotion.Negative;
             }
 
         } else {
@@ -247,15 +264,19 @@ class MuseumApp {
 
             if (ret) {
                 toSpeak = "Yes well done, I did not say Simon says.";
+                emotion = Emotion.Positive;
                 ++score;
             } else {
                 toSpeak = "No you got it wrong, I did not say Simon says.";
+                emotion = Emotion.Negative;
             }
 
         }
 
         toSpeak += " Your score is " + score;
-        mu.speak(toSpeak);
+        //mu.speak(toSpeak);
+        
+        mu.giveFeedback(toSpeak, emotion);
         return ret;
 
     }

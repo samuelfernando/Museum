@@ -33,6 +33,9 @@ import javax.vecmath.Vector3f;
 import marytts.LocalMaryInterface;
 import marytts.MaryInterface;
 import marytts.util.data.audio.AudioPlayer;
+import org.robokind.api.motion.Robot;
+import org.robokind.api.motion.Robot.JointId;
+import org.robokind.api.motion.messaging.RemoteRobot;
 import org.robokind.api.speech.utils.DefaultSpeechJob;
 
 /**
@@ -48,7 +51,7 @@ public class MuseumUtils {
     long startTime;
     DecimalFormat df;
     DecimalFormat posSpeak;
-    PrintStream out;
+    PrintStream skeletonOut;
     UserTracker mTracker;
     PositionPanel posPanel;
     MaryInterface marytts;
@@ -60,19 +63,19 @@ public class MuseumUtils {
     boolean robotSpeechPendingComplete;
     AudioPlayer audioPlayer;
     SimpleDateFormat dateFormat;
+    PrintStream robotOut;
+    boolean faceExpr;
     
     public MuseumUtils() {
-       HashMap<String, String> configs = ReadConfig.readConfig();
-       robotActive = Boolean.parseBoolean(configs.get("robot-active"));
-       if (robotActive) {
-           robotController = new RobotController(configs.get("ip"));
-       }
+            HashMap<String, String> configs = ReadConfig.readConfig();
+       
        robotSpeechPendingComplete = false;
        playWav = false;
        String wavConf = configs.get("wav-tts");
         if (wavConf.equals("wav")) {
             playWav = true;
         }
+        faceExpr = Boolean.parseBoolean(configs.get("face-expr"));
         textMap = new HashMap<String, String>();
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.SSS");
         try {
@@ -96,8 +99,14 @@ public class MuseumUtils {
             Set<String> voices = marytts.getAvailableVoices();
             marytts.setVoice(voices.iterator().next());
             String timeNow = dateFormat.format(new Date(currentTime));
-            out = new PrintStream("out-"+timeNow+".txt");
+            skeletonOut = new PrintStream("skeletonOut-"+timeNow+".txt");
+            robotOut = new PrintStream("robotOut-"+timeNow+".txt");
+                
             
+            robotActive = Boolean.parseBoolean(configs.get("robot-active"));
+            if (robotActive) {
+                robotController = new RobotController(configs.get("ip"), robotOut);
+                }
             posSpeak = new DecimalFormat("#");
         } catch (Exception ex) {
             Logger.getLogger(UserViewer.class.getName()).log(Level.SEVERE, null, ex);
@@ -204,12 +213,6 @@ public class MuseumUtils {
     }
     
     void robotSpeak(String text) {
-        if (text.toLowerCase().contains("wrong")) {
-            robotController.playAnim("disappointed");
-        }
-        else if (text.toLowerCase().contains("yes")) {
-            robotController.playAnim("victory");
-        }
         robotController.speak(text);
     }
     void robotWav(String text) {
@@ -321,7 +324,8 @@ public class MuseumUtils {
         return point;
     }
 
-    void makeLog(UserData user) {
+    void makeLog(UserData user, VisitorState visitorState, PlayState playState) {
+        
         long now = System.currentTimeMillis();
         com.primesense.nite.SkeletonJoint joint = user.getSkeleton().getJoint(JointType.HEAD);
 
@@ -334,7 +338,7 @@ public class MuseumUtils {
         float x = position.getX();
         float y = position.getY();
         float z = position.getZ();
-        float totalElapsed = (float) (now - startTime) / 1000;
+        //float totalElapsed = (float) (now - startTime) / 1000;
 
         if (now - lastUpdate > 200) {
             //speak(" x "+ df.format(x/1000) + " y "+df.format(y/1000)+" z "+df.format(z/1000));
@@ -346,11 +350,21 @@ public class MuseumUtils {
         }
         Date date = new Date(now);
         String timeNow = dateFormat.format(date);
+        robotOut.println(timeNow+"\tVisitorState\t"+visitorState+"\tPlayState\t"+playState);
          
         for (SkeletonJoint skelJoint : user.getSkeleton().getJoints()) {
-            out.println("User"+user.getId()+"\t"+timeNow+"\t"+skelJoint.getJointType()+"\t"+skelJoint.getPosition().getX()+"\t"+skelJoint.getPosition().getY()+"\t"+skelJoint.getPosition().getZ()+"\t"+skelJoint.getOrientation().getW()+"\t"+skelJoint.getOrientation().getX()+"\t"+skelJoint.getOrientation().getY()+"\t"+skelJoint.getOrientation().getZ()+"\t"+skelJoint.getPositionConfidence()+"\t"+skelJoint.getOrientationConfidence());//+"\t"+user.getSkeleton().getJoints());
+            skeletonOut.println("User"+user.getId()+"\t"+timeNow+"\t"+skelJoint.getJointType()+"\t"+skelJoint.getPosition().getX()+"\t"+skelJoint.getPosition().getY()+"\t"+skelJoint.getPosition().getZ()+"\t"+skelJoint.getOrientation().getW()+"\t"+skelJoint.getOrientation().getX()+"\t"+skelJoint.getOrientation().getY()+"\t"+skelJoint.getOrientation().getZ()+"\t"+skelJoint.getPositionConfidence()+"\t"+skelJoint.getOrientationConfidence());//+"\t"+user.getSkeleton().getJoints());
         }
-
+       /*if (robotActive) {
+            RemoteRobot robot = robotController.myRobot;
+            Robot.RobotPositionMap robotPositions = robot.getGoalPositions();
+            Set<JointId> robotJoints = robotPositions.keySet();
+            for (JointId robotJoint : robotJoints) {
+                robotOut.println("RobotPos\t"+timeNow+"\t"+robotJoint+"\t"+robotPositions.get(robotJoint));
+            }
+            
+        }*/
+        
     }
 
     boolean checkAction(Action action) {
@@ -472,7 +486,7 @@ public class MuseumUtils {
             //mTracker.stopSkeletonTracking(id);
             report += " NotVisible";
         }
-        out.println(report);
+        skeletonOut.println(report);
 
 
     }
@@ -487,4 +501,29 @@ public class MuseumUtils {
         
         System.exit(0);
     }
-}
+
+    void giveFeedback(String toSpeak, Emotion emotion) {
+        if (robotActive) {
+            if (faceExpr) {
+                if (emotion==Emotion.Positive) {
+                    robotController.playAnim("victory");
+                }
+                else if (emotion==Emotion.Negative) {
+                    robotController.playAnim("disappointed");
+                }
+            }
+            
+        }
+        speak(toSpeak);
+    
+    }
+
+    void resetExpression() {
+        if (robotActive) {
+            if (faceExpr) {
+                robotController.setDefaultPositions();
+            }
+        }
+    }
+
+ }
