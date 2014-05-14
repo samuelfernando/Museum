@@ -77,7 +77,7 @@ public class MuseumUtils {
        robotSpeechPendingComplete = false;
        playWav = false;
        String wavConf = configs.get("wav-tts");
-        if (wavConf.equals("wav")) {
+        if (wavConf!=null && wavConf.equals("wav")) {
             playWav = true;
         }
         faceExpr = Boolean.parseBoolean(configs.get("face-expr"));
