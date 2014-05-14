@@ -109,8 +109,8 @@ public class MuseumUtils {
             Set<String> voices = marytts.getAvailableVoices();
             marytts.setVoice(voices.iterator().next());
             String timeNow = dateFormat.format(new Date(currentTime));
-            skeletonOut = new PrintStream("skeletonOut-"+timeNow+".txt");
-            robotOut = new PrintStream("robotOut-"+timeNow+".txt");
+            skeletonOut = new PrintStream("C:\\Users\\samf\\Documents\\NetBeansProjects\\skeleton-logs\\skeletonOut-"+timeNow+".txt");
+            robotOut = new PrintStream("C:\\Users\\samf\\Documents\\NetBeansProjects\\robot-logs\\robotOut-"+timeNow+".txt");
                 
             
             robotActive = Boolean.parseBoolean(configs.get("robot-active"));
