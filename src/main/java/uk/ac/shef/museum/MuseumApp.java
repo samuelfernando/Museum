@@ -142,8 +142,10 @@ class MuseumApp {
             if (!greeted && mu.speechFinished()) {
                 // System.out.println("Greeting");
 
-                mu.speak("Hello! Are you ready to play with me? Let's play Simon Says!"
-                        + " If I say Simon Says you must do the action. Otherwise do not.");
+               // mu.speak("Hello! Are you ready to play with me? Let's play Simon Says!"
+                 //       + " If I say Simon Says you must do the action. Otherwise do not.");
+                mu.speak("Hello! Are you ready to play with me? Let's play Simon Says! "
+             +"If I say Simon Says, you must do the action. If I doo not say Simon Says, you must keep still.");
                 ++userCount;
                 activeUser = getActiveUser(users);
                 if (kinectRecording) {
@@ -224,8 +226,9 @@ class MuseumApp {
 
         if (state == VisitorState.GOODBYE) {
             if (mu.speechFinished()) {
-                mu.speak("Goodbye! I had fun playing with you. Your final score was " + score);
-                
+             //   mu.speak("Goodbye! I had fun playing with you. Your final score was " + score);
+                    mu.speak("All right! We had 10 goes, and your final score was "+score+". I had fun playing with you, but it's time for me to play with someone else now. Bye bye! ");
+ 
                 if (kinectRecording) {
                     kinectVideoRecorder.stop();
                 }
@@ -251,11 +254,14 @@ class MuseumApp {
         if (simonSays) {
             ret = mu.checkAction(currentAction);
             if (ret) {
-                toSpeak = "Yes, you got that right!";
+                //toSpeak = "Yes, you got that right!";
+                toSpeak = "Yes, well done, you got that right!";
                 emotion = Emotion.Positive;
                 ++score;
             } else {
-                toSpeak = "No you got that wrong " + currentAction.getError() + ".";
+                toSpeak = "Oh dear, I said Simon Says, so "+currentAction.getError() + ".";
+                
+                //toSpeak = "No you got that wrong " + currentAction.getError() + ".";
                 emotion = Emotion.Negative;
             }
 
@@ -263,11 +269,11 @@ class MuseumApp {
             ret = !mu.checkAction(currentAction);
 
             if (ret) {
-                toSpeak = "Yes well done, I did not say Simon says.";
+                toSpeak = "Yes, well done! I did not say Simon Says, and you kept still.";
                 emotion = Emotion.Positive;
                 ++score;
             } else {
-                toSpeak = "No you got it wrong, I did not say Simon says.";
+                toSpeak = "Oh dear, I did not say Simon says, you should have kept still.";
                 emotion = Emotion.Negative;
             }
 
@@ -305,7 +311,9 @@ class MuseumApp {
     boolean anyoneInZone(List<UserData> users) {
         boolean anyoneInZone = false;
         for (UserData user : users) {
-            if (mu.inPlayZone(user)) {
+            if (mu.newPlayZone(user)) {
+              
+            //if (mu.inPlayZone(user)) {
                 anyoneInZone = true;
             }
         }
@@ -315,7 +323,9 @@ class MuseumApp {
     UserData getActiveUser(List<UserData> users) {
         UserData chosenUser = null;
         for (UserData user : users) {
-            if (mu.inPlayZone(user)) {
+            if (mu.newPlayZone(user)) {
+              
+            //if (mu.inPlayZone(user)) {
                 chosenUser = user;
             }
         }

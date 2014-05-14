@@ -65,6 +65,11 @@ public class MuseumUtils {
     SimpleDateFormat dateFormat;
     PrintStream robotOut;
     boolean faceExpr;
+        float matFront;
+    int matNoX;
+    int matNoY;
+    float matSize;
+
     
     public MuseumUtils() {
             HashMap<String, String> configs = ReadConfig.readConfig();
@@ -94,6 +99,11 @@ public class MuseumUtils {
         centerPoint = new Point3f(0, 1320, 2000);
         logPos = new Stack<Skeleton>();
         long currentTime = System.currentTimeMillis();
+                matFront = Float.parseFloat(configs.get("mat-front"));
+        matSize = Float.parseFloat(configs.get("mat-size"));
+        matNoX = Integer.parseInt(configs.get("mat-dimno-x"));
+        matNoY = Integer.parseInt(configs.get("mat-dimno-y"));
+
         try {
             marytts = new LocalMaryInterface();
             Set<String> voices = marytts.getAvailableVoices();
@@ -167,6 +177,71 @@ public class MuseumUtils {
         return ret;
 
     }
+    
+  boolean newPlayZone(UserData user) {
+        boolean ret = false;
+
+        long now = System.currentTimeMillis();
+
+        Skeleton skeleton = user.getSkeleton();
+        SkeletonState skelState = skeleton.getState();
+        if (skelState == SkeletonState.TRACKED) {
+            //System.out.println("Tracking user");
+            com.primesense.nite.SkeletonJoint joint = skeleton.getJoint(JointType.HEAD);
+
+            Point3D<Float> position = joint.getPosition();
+            Point3f kinectUser = convertPoint(position);
+            //Point3f robotUser = kinectUser;
+            //System.out.println("robotUser = " + robotUser);
+
+            float x = kinectUser.x;
+            float z = kinectUser.z;
+            
+            float matBack = matFront + matSize*matNoY;
+            float matLeft = -matSize/2 * matNoX;
+            float matRight = matSize/2 * matNoX;
+ 
+            if (matLeft<=x && x<=matRight && matFront<=z && z<=matBack) {
+                if (speechFinished()) {
+                    //speak("In");
+                }
+                ret = true;
+            }
+            else {
+                if (speechFinished()) {
+                    //speak("Out");
+                }
+                ret = false;
+            }
+
+            /*Vector3f dist = new Vector3f();
+             dist.x = pos.x - centerPoint.x;
+             dist.y = pos.z - centerPoint.z;
+             //if (now - lastSpeak > 2000) {
+             float d = dist.length();
+             if (d < 850) {
+             //speak("In");
+             ret = true;
+             } else {
+             //      System.out.println("Outside zone");
+             // speak("Out");
+             }
+             lastSpeak = now;
+             //}
+
+             */
+        } else {
+            //System.out.println("Not tracking user");
+            // not yet tracked
+        }
+
+
+
+        return ret;
+
+
+    }
+
 
     void speak(String text) {               
         if (robotActive) {
